@@ -21,7 +21,7 @@ import random
 import re
 from textwrap import dedent
 
-import click
+import asyncclick as click
 import pytest
 
 from click_extra import echo
@@ -101,12 +101,13 @@ def test_root_logger_defaults():
     ),
 )
 # TODO: test extra_group
-def test_integrated_verbosity_options(invoke, args, expected_level):
+@pytest.mark.asyncio
+async def test_integrated_verbosity_options(invoke, args, expected_level):
     @extra_command
     def logging_cli3():
         echo("It works!")
 
-    result = invoke(logging_cli3, args, color=True)
+    result = await invoke(logging_cli3, args, color=True)
     assert result.exit_code == 0
     assert result.stdout == "It works!\n"
     if expected_level == "DEBUG":
@@ -138,7 +139,8 @@ def test_integrated_verbosity_options(invoke, args, expected_level):
         # Duplicate options with different levels: the last always win.
         ("--blah", "INFO", "-B", "DEBUG"),
         ("-B", "INFO", "--blah", "DEBUG"),
-        # Click's argument parser deduplicate options before invoking the callback, so the following cases fails.
+        # Click's argument parser deduplicate options before invoking the callback,
+        # so the following cases fails.
         pytest.param(
             ("--blah", "DEBUG", "-B", "INFO"),
             marks=pytest.mark.xfail(reason="Last value of the same option wins"),
@@ -149,7 +151,8 @@ def test_integrated_verbosity_options(invoke, args, expected_level):
         ),
     ),
 )
-def test_custom_verbosity_option_name(invoke, args):
+@pytest.mark.asyncio
+async def test_custom_verbosity_option_name(invoke, args):
     param_names = ("--blah", "-B")
 
     @click.command
@@ -158,7 +161,7 @@ def test_custom_verbosity_option_name(invoke, args):
         root_logger = logging.getLogger()
         root_logger.debug("my debug message.")
 
-    result = invoke(awesome_app, args, color=False)
+    result = await invoke(awesome_app, args, color=False)
     assert result.exit_code == 0
     assert not result.stdout
     assert re.fullmatch(
@@ -182,7 +185,8 @@ def test_custom_verbosity_option_name(invoke, args):
         ("-B", "--blah"),
     ),
 )
-def test_custom_verbose_option_name(invoke, args):
+@pytest.mark.asyncio
+async def test_custom_verbose_option_name(invoke, args):
     param_names = ("--blah", "-B")
 
     @click.command
@@ -191,7 +195,7 @@ def test_custom_verbose_option_name(invoke, args):
         root_logger = logging.getLogger()
         root_logger.debug("my debug message.")
 
-    result = invoke(awesome_app, args, color=False)
+    result = await invoke(awesome_app, args, color=False)
     assert result.exit_code == 0
     assert not result.stdout
     assert re.fullmatch(
@@ -207,14 +211,15 @@ def test_custom_verbose_option_name(invoke, args):
     ("cmd_decorator", "cmd_type"),
     command_decorators(with_types=True),
 )
-def test_unrecognized_verbosity_level(invoke, cmd_decorator, cmd_type):
+@pytest.mark.asyncio
+async def test_unrecognized_verbosity_level(invoke, cmd_decorator, cmd_type):
     @cmd_decorator
     @verbosity_option
     def logging_cli1():
         echo("It works!")
 
     # Remove colors to simplify output comparison.
-    result = invoke(logging_cli1, "--verbosity", "random", color=False)
+    result = await invoke(logging_cli1, "--verbosity", "random", color=False)
     assert result.exit_code == 2
     assert not result.stdout
 
@@ -257,7 +262,8 @@ def test_unrecognized_verbosity_level(invoke, cmd_decorator, cmd_type):
         (("-v", "-v", "-v", "-v", "-v", "-v"), "DEBUG"),
     ),
 )
-def test_standalone_option_default_logger(
+@pytest.mark.asyncio
+async def test_standalone_option_default_logger(
     invoke, cmd_decorator, option_decorator, args, expected_level
 ):
     """Checks:
@@ -290,7 +296,7 @@ def test_standalone_option_default_logger(
             reason=f"Test case for {' '.join(args)!r} does not apply to {logging_option}"
         )
 
-    result = invoke(logging_cli2, args, color=True)
+    result = await invoke(logging_cli2, args, color=True)
     assert result.exit_code == 0
     assert result.stdout == "It works!\n"
 
@@ -322,7 +328,7 @@ def test_standalone_option_default_logger(
     level_index = {index: level for level, index in enumerate(LOG_LEVELS)}[
         expected_level
     ]
-    log_records = r"".join(messages[-level_index - 1 :])
+    log_records = r"".join(messages[-level_index - 1:])
 
     if expected_level == "DEBUG":
         log_start = default_debug_colored_logging
@@ -341,7 +347,8 @@ def test_standalone_option_default_logger(
     ),
 )
 @pytest.mark.parametrize("params", (("--verbosity", "DEBUG"), None))
-def test_default_logger_param(invoke, logger_param, params):
+@pytest.mark.asyncio
+async def test_default_logger_param(invoke, logger_param, params):
     """Passing a logger instance or name to the ``default_logger`` parameter works."""
 
     @click.command
@@ -350,7 +357,7 @@ def test_default_logger_param(invoke, logger_param, params):
         echo("Starting Awesome App...")
         logging.getLogger("awesome_app").debug("Awesome App has started.")
 
-    result = invoke(awesome_app, params, color=False)
+    result = await invoke(awesome_app, params, color=False)
     assert result.exit_code == 0
     assert result.stdout == "Starting Awesome App...\n"
     if params:
@@ -365,7 +372,8 @@ def test_default_logger_param(invoke, logger_param, params):
         assert not result.stderr
 
 
-def test_new_extra_logger_name_passing(invoke):
+@pytest.mark.asyncio
+async def test_new_extra_logger_name_passing(invoke):
     """Test extra logger with custom format, passed to the option by its name."""
     new_extra_logger(
         name="my_logger",
@@ -385,14 +393,14 @@ def test_new_extra_logger_name_passing(invoke):
         my_logger.debug("My logger debug")
         my_logger.info("My logger info")
 
-    result = invoke(logger_as_name, color=False)
+    result = await invoke(logger_as_name, color=False)
     assert result.exit_code == 0
     assert result.output == dedent("""\
         warning: Root logger warning
         warning | my_logger | My logger warning
         """)
 
-    result = invoke(logger_as_name, ("--verbosity", "DEBUG"), color=False)
+    result = await invoke(logger_as_name, ("--verbosity", "DEBUG"), color=False)
     assert result.exit_code == 0
     # The --verbosity option only affects the logger it is attached to.
     assert result.output == dedent("""\
@@ -407,7 +415,8 @@ def test_new_extra_logger_name_passing(invoke):
         """)
 
 
-def test_new_extra_logger_object_passing(invoke):
+@pytest.mark.asyncio
+async def test_new_extra_logger_object_passing(invoke):
     """Test extra logger with custom format, passed as an object to the option."""
     custom_logger = new_extra_logger(
         name="my_logger",
@@ -426,14 +435,14 @@ def test_new_extra_logger_object_passing(invoke):
         custom_logger.debug("Logger object debug")
         custom_logger.info("Logger object info")
 
-    result = invoke(logger_as_object, color=False)
+    result = await invoke(logger_as_object, color=False)
     assert result.exit_code == 0
     assert result.output == dedent("""\
         warning: Root logger warning
         warning | my_logger | Logger object warning
         """)
 
-    result = invoke(logger_as_object, ("--verbosity", "DEBUG"), color=False)
+    result = await invoke(logger_as_object, ("--verbosity", "DEBUG"), color=False)
     assert result.exit_code == 0
     assert result.output == dedent("""\
         debug: Set <Logger click_extra (DEBUG)> to DEBUG.
@@ -448,7 +457,8 @@ def test_new_extra_logger_object_passing(invoke):
 
 
 @pytest.mark.skip(reason="Test is flacky because of the logger's propagation.")
-def test_new_extra_logger_root_config(invoke):
+@pytest.mark.asyncio
+async def test_new_extra_logger_root_config(invoke):
     """Modify the root logger via ``new_extra_logger()``"""
 
     root_logger = new_extra_logger(format="{levelname} | {name} | {message}")
@@ -466,14 +476,14 @@ def test_new_extra_logger_root_config(invoke):
         my_logger.debug("My logger debug")
         my_logger.info("My logger info")
 
-    result = invoke(custom_root_logger_cli, color=False)
+    result = await invoke(custom_root_logger_cli, color=False)
     assert result.exit_code == 0
     assert result.output == dedent("""\
         warning | root | Root logger warning
         warning | my_logger | My logger warning
         """)
 
-    result = invoke(custom_root_logger_cli, ("--verbosity", "DEBUG"), color=False)
+    result = await invoke(custom_root_logger_cli, ("--verbosity", "DEBUG"), color=False)
     assert result.exit_code == 0
     assert result.output == dedent("""\
         debug | click_extra | Set <Logger click_extra (DEBUG)> to DEBUG.
@@ -487,7 +497,8 @@ def test_new_extra_logger_root_config(invoke):
         """)
 
 
-def test_logger_propagation(invoke):
+@pytest.mark.asyncio
+async def test_logger_propagation(invoke):
     new_extra_logger(
         name="my_logger",
         propagate=True,
@@ -507,7 +518,7 @@ def test_logger_propagation(invoke):
         my_logger.debug("My logger debug")
         my_logger.info("My logger info")
 
-    result = invoke(logger_as_name, color=False)
+    result = await invoke(logger_as_name, color=False)
     assert result.exit_code == 0
     # my_logger is now breaking its inheritance from the root logger.
     assert result.output == dedent("""\
@@ -516,7 +527,7 @@ def test_logger_propagation(invoke):
         warning: My logger warning
         """)
 
-    result = invoke(logger_as_name, ("--verbosity", "DEBUG"), color=False)
+    result = await invoke(logger_as_name, ("--verbosity", "DEBUG"), color=False)
     assert result.exit_code == 0
     # The root logger is unaffected by the --verbosity option.
     assert result.output == dedent("""\

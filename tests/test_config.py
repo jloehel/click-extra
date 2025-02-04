@@ -20,7 +20,7 @@ import re
 from pathlib import Path
 from textwrap import dedent
 
-import click
+import asyncclick as click
 import pytest
 from boltons.pathutils import shrinkuser
 
@@ -307,15 +307,17 @@ def simple_config_cli():
     return config_cli1
 
 
-def test_unset_conf_no_message(invoke, simple_config_cli):
-    result = invoke(simple_config_cli, "default-command")
+@pytest.mark.asyncio
+async def test_unset_conf_no_message(invoke, simple_config_cli):
+    result = await invoke(simple_config_cli, "default-command")
     assert result.exit_code == 0
     assert not result.stderr
     assert result.stdout == "dummy_flag = False\nmy_list = ()\nint_parameter = 10\n"
 
 
-def test_unset_conf_debug_message(invoke, simple_config_cli):
-    result = invoke(
+@pytest.mark.asyncio
+async def test_unset_conf_debug_message(invoke, simple_config_cli):
+    result = await invoke(
         simple_config_cli,
         "--verbosity",
         "DEBUG",
@@ -330,8 +332,9 @@ def test_unset_conf_debug_message(invoke, simple_config_cli):
     )
 
 
-def test_conf_default_path(invoke, simple_config_cli):
-    result = invoke(simple_config_cli, "--help", color=False)
+@pytest.mark.asyncio
+async def test_conf_default_path(invoke, simple_config_cli):
+    result = await invoke(simple_config_cli, "--help", color=False)
     assert result.exit_code == 0
     assert not result.stderr
 
@@ -348,9 +351,10 @@ def test_conf_default_path(invoke, simple_config_cli):
     )
 
 
-def test_conf_not_exist(invoke, simple_config_cli):
+@pytest.mark.asyncio
+async def test_conf_not_exist(invoke, simple_config_cli):
     conf_path = Path("dummy.toml")
-    result = invoke(
+    result = await invoke(
         simple_config_cli,
         "--config",
         str(conf_path),
@@ -363,9 +367,10 @@ def test_conf_not_exist(invoke, simple_config_cli):
     assert "critical: No configuration file found.\n" in result.stderr
 
 
-def test_conf_not_file(invoke, simple_config_cli):
+@pytest.mark.asyncio
+async def test_conf_not_file(invoke, simple_config_cli):
     conf_path = Path().parent
-    result = invoke(
+    result = await invoke(
         simple_config_cli,
         "--config",
         str(conf_path),
@@ -379,7 +384,8 @@ def test_conf_not_file(invoke, simple_config_cli):
     assert "critical: No configuration file found.\n" in result.stderr
 
 
-def test_strict_conf(invoke, create_config):
+@pytest.mark.asyncio
+async def test_strict_conf(invoke, create_config):
     """Same test as the one shown in the readme, but in strict validation mode."""
 
     @click.group
@@ -411,7 +417,9 @@ def test_strict_conf(invoke, create_config):
 
     conf_path = create_config("messy.toml", conf_file)
 
-    result = invoke(config_cli3, "--config", str(conf_path), "subcommand", color=False)
+    result = await invoke(
+        config_cli3, "--config", str(conf_path), "subcommand", color=False
+    )
 
     assert result.exception
     assert type(result.exception) is ValueError
@@ -426,7 +434,8 @@ def test_strict_conf(invoke, create_config):
 
 
 @all_config_formats
-def test_conf_file_overrides_defaults(
+@pytest.mark.asyncio
+async def test_conf_file_overrides_defaults(
     invoke,
     simple_config_cli,
     create_config,
@@ -441,7 +450,7 @@ def test_conf_file_overrides_defaults(
     conf_url = httpserver.url_for(f"/{conf_name}")
 
     for conf_path, is_url in (conf_filepath, False), (conf_url, True):
-        result = invoke(
+        result = await invoke(
             simple_config_cli,
             "--config",
             str(conf_path),
@@ -469,7 +478,8 @@ def test_conf_file_overrides_defaults(
 
 
 @all_config_formats
-def test_auto_env_var_conf(
+@pytest.mark.asyncio
+async def test_auto_env_var_conf(
     invoke,
     simple_config_cli,
     create_config,
@@ -479,7 +489,7 @@ def test_auto_env_var_conf(
     conf_data,
 ):
     # Check the --config option properly documents its environment variable.
-    result = invoke(simple_config_cli, "--help")
+    result = await invoke(simple_config_cli, "--help")
     assert result.exit_code == 0
     assert not result.stderr
     assert "CONFIG_CLI1_CONFIG" in result.stdout
@@ -493,7 +503,7 @@ def test_auto_env_var_conf(
 
     for conf_path in conf_filepath, conf_url:
         conf_path = create_config(conf_name, conf_text)
-        result = invoke(
+        result = await invoke(
             simple_config_cli,
             "default-command",
             color=False,
@@ -512,7 +522,8 @@ def test_auto_env_var_conf(
 
 
 @all_config_formats
-def test_conf_file_overridden_by_cli_param(
+@pytest.mark.asyncio
+async def test_conf_file_overridden_by_cli_param(
     invoke,
     simple_config_cli,
     create_config,
@@ -528,7 +539,7 @@ def test_conf_file_overridden_by_cli_param(
 
     for conf_path in conf_filepath, conf_url:
         conf_path = create_config(conf_name, conf_text)
-        result = invoke(
+        result = await invoke(
             simple_config_cli,
             "--my-list",
             "super",
@@ -551,7 +562,8 @@ def test_conf_file_overridden_by_cli_param(
 
 
 @all_config_formats
-def test_conf_metadata(
+@pytest.mark.asyncio
+async def test_conf_metadata(
     invoke,
     create_config,
     httpserver,
@@ -574,7 +586,7 @@ def test_conf_metadata(
 
     for conf_path in conf_filepath, conf_url:
         conf_path = create_config(conf_name, conf_text)
-        result = invoke(config_metadata, "--config", str(conf_path))
+        result = await invoke(config_metadata, "--config", str(conf_path))
         assert result.exit_code == 0
         assert result.stdout == (
             f"conf_source={conf_path}\n"

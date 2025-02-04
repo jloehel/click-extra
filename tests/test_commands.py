@@ -24,7 +24,7 @@ import re
 from pathlib import Path
 from textwrap import dedent
 
-import click
+import asyncclick as click
 import cloup
 import pytest
 
@@ -128,22 +128,25 @@ help_screen = (
 )
 
 
-def test_unknown_option(invoke, all_command_cli):
-    result = invoke(all_command_cli, "--blah")
+@pytest.mark.asyncio
+async def test_unknown_option(invoke, all_command_cli):
+    result = await invoke(all_command_cli, "--blah")
     assert result.exit_code == 2
     assert not result.stdout
     assert "Error: No such option: --blah" in result.stderr
 
 
-def test_unknown_command(invoke, all_command_cli):
-    result = invoke(all_command_cli, "blah")
+@pytest.mark.asyncio
+async def test_unknown_command(invoke, all_command_cli):
+    result = await invoke(all_command_cli, "blah")
     assert result.exit_code == 2
     assert not result.stdout
     assert "Error: No such command 'blah'." in result.stderr
 
 
-def test_required_command(invoke, all_command_cli):
-    result = invoke(all_command_cli, "--verbosity", "DEBUG", color=False)
+@pytest.mark.asyncio
+async def test_required_command(invoke, all_command_cli):
+    result = await invoke(all_command_cli, "--verbosity", "DEBUG", color=False)
     assert result.exit_code == 2
     # In debug mode, the version is always printed.
     assert not result.stdout
@@ -161,8 +164,9 @@ def test_required_command(invoke, all_command_cli):
 
 
 @pytest.mark.parametrize("param", (None, "-h", "--help"))
-def test_group_help(invoke, all_command_cli, param):
-    result = invoke(all_command_cli, param, color=False)
+@pytest.mark.asyncio
+async def test_group_help(invoke, all_command_cli, param):
+    result = await invoke(all_command_cli, param, color=False)
     assert result.exit_code == 0
     assert re.fullmatch(help_screen, result.stdout)
     assert "It works!" not in result.stdout
@@ -173,19 +177,22 @@ def test_group_help(invoke, all_command_cli, param):
     "params",
     ("--version", "blah", ("--verbosity", "DEBUG"), ("--config", "random.toml")),
 )
-def test_help_eagerness(invoke, all_command_cli, params):
+@pytest.mark.asyncio
+async def test_help_eagerness(invoke, all_command_cli, params):
     """See:
     https://click.palletsprojects.com/en/stable/advanced/#callback-evaluation-order
     """
-    result = invoke(all_command_cli, "--help", params, color=False)
+    result = await invoke(all_command_cli, "--help", params, color=False)
     assert result.exit_code == 0
     assert re.fullmatch(help_screen, result.stdout)
     assert "It works!" not in result.stdout
     assert not result.stderr
 
 
-def test_help_custom_name(invoke):
-    """Removes the ``-h`` short option as we reserve it for a custom ``-h/--header`` option.
+@pytest.mark.asyncio
+async def test_help_custom_name(invoke):
+    """Removes the ``-h`` short option as we reserve it for a custom ``-h/--header``
+    option.
 
     See: https://github.com/kdeldycke/mail-deduplicate/issues/762
     """
@@ -195,7 +202,7 @@ def test_help_custom_name(invoke):
     def cli(header):
         echo(f"--header is {header}")
 
-    result = invoke(cli, "--help", color=False)
+    result = await invoke(cli, "--help", color=False)
     assert result.exit_code == 0
     assert "-h, --header" in result.stdout
     assert "-h, --help" not in result.stdout
@@ -205,8 +212,9 @@ def test_help_custom_name(invoke):
 
 @pytest.mark.parametrize("cmd_id", ("default", "click-extra", "cloup", "click"))
 @pytest.mark.parametrize("param", ("-h", "--help"))
-def test_subcommand_help(invoke, all_command_cli, cmd_id, param):
-    result = invoke(all_command_cli, f"{cmd_id}-subcommand", param)
+@pytest.mark.asyncio
+async def test_subcommand_help(invoke, all_command_cli, cmd_id, param):
+    result = await invoke(all_command_cli, f"{cmd_id}-subcommand", param)
     assert result.exit_code == 0
     assert not result.stderr
 
@@ -252,8 +260,9 @@ def test_subcommand_help(invoke, all_command_cli, cmd_id, param):
 
 
 @pytest.mark.parametrize("cmd_id", ("default", "click-extra", "cloup", "click"))
-def test_subcommand_execution(invoke, all_command_cli, cmd_id):
-    result = invoke(all_command_cli, f"{cmd_id}-subcommand", color=False)
+@pytest.mark.asyncio
+async def test_subcommand_execution(invoke, all_command_cli, cmd_id):
+    result = await invoke(all_command_cli, f"{cmd_id}-subcommand", color=False)
     assert result.exit_code == 0
     assert result.stdout == dedent(
         f"""\
@@ -264,8 +273,9 @@ def test_subcommand_execution(invoke, all_command_cli, cmd_id):
     assert not result.stderr
 
 
-def test_integrated_version_value(invoke, all_command_cli):
-    result = invoke(all_command_cli, "--version", color=False)
+@pytest.mark.asyncio
+async def test_integrated_version_value(invoke, all_command_cli):
+    result = await invoke(all_command_cli, "--version", color=False)
     assert result.exit_code == 0
     assert not result.stderr
     assert result.stdout == "command-cli1, version 2021.10.08\n"
@@ -281,7 +291,8 @@ def test_integrated_version_value(invoke, all_command_cli):
     ),
 )
 @pytest.mark.parametrize("param", ("-h", "--help"))
-def test_colored_bare_help(invoke, cmd_decorator, param):
+@pytest.mark.asyncio
+async def test_colored_bare_help(invoke, cmd_decorator, param):
     """Extra decorators are always colored.
 
     Even when stripped of their default parameters, as reported in:
@@ -293,7 +304,7 @@ def test_colored_bare_help(invoke, cmd_decorator, param):
     def bare_cli():
         pass
 
-    result = invoke(bare_cli, param)
+    result = await invoke(bare_cli, param)
     assert result.exit_code == 0
     assert not result.stderr
     assert (
@@ -303,7 +314,8 @@ def test_colored_bare_help(invoke, cmd_decorator, param):
     ) in result.stdout
 
 
-def test_duplicate_option(invoke):
+@pytest.mark.asyncio
+async def test_duplicate_option(invoke):
     """
     See:
     - https://kdeldycke.github.io/click-extra/commands.html#change-default-options
@@ -315,12 +327,12 @@ def test_duplicate_option(invoke):
     def cli():
         pass
 
-    result = invoke(cli, "--help", color=False)
+    result = await invoke(cli, "--help", color=False)
     assert result.exit_code == 0
     assert result.stdout.endswith(
         "  --verbosity LEVEL         Either CRITICAL, ERROR, WARNING, INFO, DEBUG.\n"
         "                            [default: WARNING]\n"
-        "  -v, --verbose             Increase the default WARNING verbosity by one level\n"
+        "  -v, --verbose             Increase the default WARNING verbosity by one level\n"  # noqa
         "                            for each additional repetition of the option.\n"
         "                            [default: 0]\n"
         "  --version                 Show the version and exit.\n"
@@ -330,7 +342,8 @@ def test_duplicate_option(invoke):
     assert not result.stderr
 
 
-def test_no_option_leaks_between_subcommands(invoke):
+@pytest.mark.asyncio
+async def test_no_option_leaks_between_subcommands(invoke):
     """As reported in https://github.com/kdeldycke/click-extra/issues/489."""
 
     @click.group
@@ -350,7 +363,7 @@ def test_no_option_leaks_between_subcommands(invoke):
     cli.add_command(foo)
     cli.add_command(bar)
 
-    result = invoke(cli, "--help", color=False)
+    result = await invoke(cli, "--help", color=False)
     assert result.exit_code == 0
     assert result.stdout == dedent(
         """\
@@ -366,7 +379,7 @@ def test_no_option_leaks_between_subcommands(invoke):
     )
     assert not result.stderr
 
-    result = invoke(cli, "foo", "--help", color=False)
+    result = await invoke(cli, "foo", "--help", color=False)
     assert result.exit_code == 0
     assert re.fullmatch(
         (
@@ -381,7 +394,7 @@ def test_no_option_leaks_between_subcommands(invoke):
     )
     assert not result.stderr
 
-    result = invoke(cli, "bar", "--help", color=False)
+    result = await invoke(cli, "bar", "--help", color=False)
     assert result.exit_code == 0
     assert re.fullmatch(
         (
@@ -397,7 +410,8 @@ def test_no_option_leaks_between_subcommands(invoke):
     assert not result.stderr
 
 
-def test_option_group_integration(invoke):
+@pytest.mark.asyncio
+async def test_option_group_integration(invoke):
     # Mix regular and grouped options
     @extra_group
     @option_group(
@@ -415,7 +429,7 @@ def test_option_group_integration(invoke):
         echo("Run command...")
 
     # Remove colors to simplify output comparison.
-    result = invoke(command_cli2, "--help", color=False)
+    result = await invoke(command_cli2, "--help", color=False)
     assert result.exit_code == 0
     assert re.fullmatch(
         (
@@ -480,7 +494,8 @@ def test_option_group_integration(invoke):
         ),
     ),
 )
-def test_show_envvar_parameter(invoke, cmd_decorator, ctx_settings, expected_help):
+@pytest.mark.asyncio
+async def test_show_envvar_parameter(invoke, cmd_decorator, ctx_settings, expected_help):
     @cmd_decorator(context_settings=ctx_settings)
     @option("--flag1", is_flag=True, envvar=["custom1"])
     @option("--flag2", is_flag=True, envvar=["custom2"], show_envvar=True)
@@ -489,13 +504,14 @@ def test_show_envvar_parameter(invoke, cmd_decorator, ctx_settings, expected_hel
         pass
 
     # Remove colors to simplify output comparison.
-    result = invoke(cli, "--help", color=False)
+    result = await invoke(cli, "--help", color=False)
     assert result.exit_code == 0
     assert not result.stderr
     assert expected_help in result.stdout
 
 
-def test_raw_args(invoke):
+@pytest.mark.asyncio
+async def test_raw_args(invoke):
     """Raw args are expected to be scoped in subcommands."""
 
     @extra_group
@@ -514,7 +530,7 @@ def test_raw_args(invoke):
         echo(f"int_parameter is {int_param!r}")
         echo(f"Raw parameters: {ctx.meta.get('click_extra.raw_args', [])}")
 
-    result = invoke(my_cli, "--dummy-flag", "subcommand", "--int-param", "33")
+    result = await invoke(my_cli, "--dummy-flag", "subcommand", "--int-param", "33")
     assert result.exit_code == 0
     assert not result.stderr
     assert result.stdout == dedent(

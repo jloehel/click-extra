@@ -25,7 +25,7 @@ from gettext import gettext as _
 from importlib import metadata
 from typing import TYPE_CHECKING, cast
 
-import click
+import asyncclick as click
 from boltons.ecoutils import get_profile
 from boltons.formatutils import BaseFormatField, tokenize_format_str
 
@@ -205,7 +205,9 @@ class ExtraVersionOption(ExtraOption):
 
             # Skip the intermediate frames added by the `@cached_property` decorator
             # and the Click ecosystem.
-            elif frame_name.startswith(("functools", "click_extra", "cloup", "click")):
+            elif frame_name.startswith(
+                ("functools", "click_extra", "cloup", "click", "asyncclick")
+            ):
                 continue
 
             # We found the frame where the CLI is implemented.

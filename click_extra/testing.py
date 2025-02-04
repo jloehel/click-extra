@@ -45,12 +45,12 @@ from typing import (
 )
 from unittest.mock import patch
 
-import click
-import click.testing
+import asyncclick as click
+import asyncclick.testing
 from boltons.iterutils import flatten
 from boltons.strutils import strip_ansi
 from boltons.tbutils import ExceptionInfo
-from click import formatting, termui, utils
+from asyncclick import formatting, termui, utils
 
 from . import Color, Style
 from .colorize import default_theme
@@ -464,7 +464,7 @@ class ExtraCliRunner(click.testing.CliRunner):
             utils.should_strip_ansi = old_should_strip_ansi
             formatting.FORCED_WIDTH = old_forced_width
 
-    def invoke2(
+    async def invoke2(
         self,
         cli: click.core.BaseCommand,
         args: str | Sequence[str] | None = None,
@@ -499,7 +499,7 @@ class ExtraCliRunner(click.testing.CliRunner):
                 prog_name = self.get_default_prog_name(cli)
 
             try:
-                return_value = cli.main(args=args or (), prog_name=prog_name, **extra)
+                return_value = await cli.main(args=args or (), prog_name=prog_name, **extra)
             except SystemExit as e:
                 exc_info = sys.exc_info()
                 e_code = cast(Optional[Union[int, Any]], e.code)
@@ -540,7 +540,7 @@ class ExtraCliRunner(click.testing.CliRunner):
             exc_info=exc_info,  # type: ignore
         )
 
-    def invoke(  # type: ignore[override]
+    async def invoke(  # type: ignore[override]
         self,
         cli: click.core.BaseCommand,
         *args: Arg | NestedArgs,
@@ -641,7 +641,7 @@ class ExtraCliRunner(click.testing.CliRunner):
             )
 
         with extra_params_bypass:
-            result = self.invoke2(
+            result = await self.invoke2(
                 cli=cli,
                 args=clean_args,
                 input=input,

@@ -17,7 +17,7 @@
 
 from functools import wraps
 
-import click
+import asyncclick as click
 import cloup
 
 from .colorize import ColorOption

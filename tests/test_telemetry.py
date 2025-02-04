@@ -28,7 +28,8 @@ from click_extra.pytest import command_decorators
     "cmd_decorator", command_decorators(no_groups=True, no_extra=True)
 )
 @pytest.mark.parametrize("option_decorator", (telemetry_option, telemetry_option()))
-def test_standalone_telemetry_option(invoke, cmd_decorator, option_decorator):
+@pytest.mark.asyncio
+async def test_standalone_telemetry_option(invoke, cmd_decorator, option_decorator):
     @cmd_decorator
     @option_decorator
     @pass_context
@@ -36,7 +37,7 @@ def test_standalone_telemetry_option(invoke, cmd_decorator, option_decorator):
         echo("It works!")
         echo(f"Telemetry value: {ctx.telemetry}")
 
-    result = invoke(standalone_telemetry, "--help")
+    result = await invoke(standalone_telemetry, "--help")
     assert result.exit_code == 0
     assert not result.stderr
 
@@ -51,18 +52,19 @@ def test_standalone_telemetry_option(invoke, cmd_decorator, option_decorator):
         """,
     )
 
-    result = invoke(standalone_telemetry, "--telemetry")
+    result = await invoke(standalone_telemetry, "--telemetry")
     assert result.exit_code == 0
     assert not result.stderr
     assert result.stdout == "It works!\nTelemetry value: True\n"
 
-    result = invoke(standalone_telemetry, "--no-telemetry")
+    result = await invoke(standalone_telemetry, "--no-telemetry")
     assert result.exit_code == 0
     assert not result.stderr
     assert result.stdout == "It works!\nTelemetry value: False\n"
 
 
-def test_multiple_envvars(invoke):
+@pytest.mark.asyncio
+async def test_multiple_envvars(invoke):
     @command(context_settings={"auto_envvar_prefix": "yo", "show_default": True})
     @telemetry_option
     @pass_context
@@ -70,7 +72,7 @@ def test_multiple_envvars(invoke):
         echo("It works!")
         echo(f"Telemetry value: {ctx.telemetry}")
 
-    result = invoke(standalone_telemetry, "--help")
+    result = await invoke(standalone_telemetry, "--help")
     assert result.exit_code == 0
     assert not result.stderr
 
@@ -85,7 +87,7 @@ def test_multiple_envvars(invoke):
         """,
     )
 
-    result = invoke(standalone_telemetry, env={"DO_NOT_TRACK": "1"})
+    result = await invoke(standalone_telemetry, env={"DO_NOT_TRACK": "1"})
     assert result.exit_code == 0
     assert not result.stderr
     assert result.stdout == "It works!\nTelemetry value: True\n"

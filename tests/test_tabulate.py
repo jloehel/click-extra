@@ -31,13 +31,14 @@ from click_extra.tabulate import output_formats
     ("cmd_decorator", "cmd_type"),
     command_decorators(with_types=True),
 )
-def test_unrecognized_format(invoke, cmd_decorator, cmd_type):
+@pytest.mark.asyncio
+async def test_unrecognized_format(invoke, cmd_decorator, cmd_type):
     @cmd_decorator
     @table_format_option
     def tabulate_cli1():
         echo("It works!")
 
-    result = invoke(tabulate_cli1, "--table-format", "random", color=False)
+    result = await invoke(tabulate_cli1, "--table-format", "random", color=False)
     assert result.exit_code == 2
     assert not result.stdout
 
@@ -520,7 +521,8 @@ def test_recognized_modes():
     ("format_name", "expected"),
     (pytest.param(k, v, id=k) for k, v in expected_renderings.items()),
 )
-def test_all_table_rendering(
+@pytest.mark.asyncio
+async def test_all_table_rendering(
     invoke, cmd_decorator, option_decorator, format_name, expected
 ):
     @cmd_decorator
@@ -534,7 +536,7 @@ def test_all_table_rendering(
         headers = ("day", "temperature")
         ctx.print_table(data, headers)
 
-    result = invoke(tabulate_cli2, "--table-format", format_name)
+    result = await invoke(tabulate_cli2, "--table-format", format_name)
     assert result.exit_code == 0
     if not is_windows():
         expected = expected.replace("\r\n", "\n")

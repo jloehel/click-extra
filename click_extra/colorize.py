@@ -28,7 +28,7 @@ from gettext import gettext as _
 from operator import getitem
 from typing import Callable, Sequence, cast
 
-import click
+import asyncclick as click
 import cloup
 from boltons.strutils import complement_int_list, int_ranges_from_int_list
 from cloup._util import identity

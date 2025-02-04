@@ -26,8 +26,8 @@ except ImportError:
 
 from typing import TYPE_CHECKING, Any
 
-import click
-import click.testing
+import asyncclick as click
+import asyncclick.testing
 import cloup
 import pytest
 

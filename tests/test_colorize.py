@@ -21,7 +21,7 @@ import os
 import re
 from textwrap import dedent
 
-import click
+import asyncclick as click
 import cloup
 import pytest
 from boltons.strutils import strip_ansi
@@ -367,7 +367,8 @@ def test_only_full_word_highlight():
     assert strip_ansi(output) == output
 
 
-def test_keyword_collection(invoke):
+@pytest.mark.asyncio
+async def test_keyword_collection(invoke):
     # Create a dummy Click CLI.
     @extra_group
     @option_group(
@@ -445,18 +446,18 @@ def test_keyword_collection(invoke):
         r"  \x1b\[36mcommand4\x1b\[0m  \x1b\[93m\x1b\[1m\(Deprecated\)\x1b\[0m\n"
     )
 
-    result = invoke(color_cli1, "--help", color=True)
+    result = await invoke(color_cli1, "--help", color=True)
     assert result.exit_code == 0
     assert re.fullmatch(help_screen, result.stdout)
     assert not result.stderr
 
-    result = invoke(color_cli1, "-h", color=True)
+    result = await invoke(color_cli1, "-h", color=True)
     assert result.exit_code == 0
     assert re.fullmatch(help_screen, result.stdout)
     assert not result.stderr
 
     # CLI main group is invoked before sub-command.
-    result = invoke(color_cli1, "command1", "--help", color=True)
+    result = await invoke(color_cli1, "command1", "--help", color=True)
     assert result.exit_code == 0
     assert result.stdout == (
         "It works!\n"
@@ -474,7 +475,7 @@ def test_keyword_collection(invoke):
     assert not result.stderr
 
     # Standalone call to command: CLI main group is skipped.
-    result = invoke(command1, "--help", color=True)
+    result = await invoke(command1, "--help", color=True)
     assert result.exit_code == 0
     assert result.stdout == (
         "\x1b[94m\x1b[1m\x1b[4mUsage:\x1b[0m \x1b[97mcommand1\x1b[0m"
@@ -492,7 +493,7 @@ def test_keyword_collection(invoke):
 
     # Non-click-extra commands are not colorized nor have extra options.
     for cmd_id in ("command2", "command3"):
-        result = invoke(color_cli1, cmd_id, "--help", color=True)
+        result = await invoke(color_cli1, cmd_id, "--help", color=True)
         assert result.exit_code == 0
         assert result.stdout == dedent(
             f"""\
@@ -518,7 +519,8 @@ def test_keyword_collection(invoke):
         (None, True),
     ),
 )
-def test_standalone_color_option(invoke, option_decorator, param, expecting_colors):
+@pytest.mark.asyncio
+async def test_standalone_color_option(invoke, option_decorator, param, expecting_colors):
     """Check color option values, defaults and effects on all things colored, including
     verbosity option."""
 
@@ -533,7 +535,7 @@ def test_standalone_color_option(invoke, option_decorator, param, expecting_colo
         print(style("print() bypass Click.", fg="blue"))
         secho("Done.", fg="green")
 
-    result = invoke(standalone_color, param, "--verbosity", "DEBUG", color=True)
+    result = await invoke(standalone_color, param, "--verbosity", "DEBUG", color=True)
     assert result.exit_code == 0
 
     if expecting_colors:
@@ -600,7 +602,8 @@ def test_standalone_color_option(invoke, option_decorator, param, expecting_colo
         (None, True),
     ),
 )
-def test_no_color_env_convention(
+@pytest.mark.asyncio
+async def test_no_color_env_convention(
     invoke,
     env,
     env_expect_colors,
@@ -612,7 +615,7 @@ def test_no_color_env_convention(
     def color_cli7():
         echo(Style(fg="yellow")("It works!"))
 
-    result = invoke(color_cli7, param, color=True, env=env)
+    result = await invoke(color_cli7, param, color=True, env=env)
     assert result.exit_code == 0
     assert not result.stderr
 
@@ -640,7 +643,8 @@ def test_no_color_env_convention(
         (None, True),
     ),
 )
-def test_integrated_color_option(invoke, param, expecting_colors):
+@pytest.mark.asyncio
+async def test_integrated_color_option(invoke, param, expecting_colors):
     """Check effect of color option on all things colored, including verbosity option.
 
     Also checks the color option in subcommands is inherited from parent context.
@@ -662,7 +666,9 @@ def test_integrated_color_option(invoke, param, expecting_colors):
         print(style("print() bypass Click.", fg="blue"))
         secho("Done.", fg="green")
 
-    result = invoke(color_cli8, param, "--verbosity", "DEBUG", "command1", color=True)
+    result = await invoke(
+        color_cli8, param, "--verbosity", "DEBUG", "command1", color=True
+    )
 
     assert result.exit_code == 0
     if expecting_colors:
@@ -773,7 +779,7 @@ def test_integrated_color_option(invoke, param, expecting_colors):
         (
             "Hey-xx-xxx-heY-xXxXxxxxx-hey",
             "x",
-            "Hey-\x1b[32mxx\x1b[0m-\x1b[32mxxx\x1b[0m-heY-\x1b[32mx\x1b[0mX\x1b[32mx\x1b[0mX\x1b[32mxxxxx\x1b[0m-hey",
+            "Hey-\x1b[32mxx\x1b[0m-\x1b[32mxxx\x1b[0m-heY-\x1b[32mx\x1b[0mX\x1b[32mx\x1b[0mX\x1b[32mxxxxx\x1b[0m-hey",  # noqa
             False,
         ),
         (
@@ -828,13 +834,14 @@ def test_substring_highlighting(original, substrings, expected, ignore_case):
     command_decorators(no_extra=True, with_types=True),
 )
 @pytest.mark.parametrize("option_decorator", (help_option, help_option()))
-def test_standalone_help_option(invoke, cmd_decorator, cmd_type, option_decorator):
+@pytest.mark.asyncio
+async def test_standalone_help_option(invoke, cmd_decorator, cmd_type, option_decorator):
     @cmd_decorator
     @option_decorator
     def standalone_help():
         echo("It works!")
 
-    result = invoke(standalone_help, "--help")
+    result = await invoke(standalone_help, "--help")
     assert result.exit_code == 0
     assert not result.stderr
 

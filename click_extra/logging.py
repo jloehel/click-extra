@@ -38,8 +38,8 @@ from logging import (
 from typing import IO, TYPE_CHECKING, Any, Literal, TypeVar
 from unittest.mock import patch
 
-import click
-from click.types import IntRange
+import asyncclick as click
+from asyncclick.types import IntRange
 
 from . import Choice, Context, Parameter
 from .colorize import default_theme

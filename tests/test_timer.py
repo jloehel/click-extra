@@ -53,8 +53,9 @@ def slow_subcommand():
         ("slow", 0.1),
     ),
 )
-def test_integrated_time_option(invoke, subcommand_id, time_min):
-    result = invoke(integrated_timer, "--time", f"{subcommand_id}-subcommand")
+@pytest.mark.asyncio
+async def test_integrated_time_option(invoke, subcommand_id, time_min):
+    result = await invoke(integrated_timer, "--time", f"{subcommand_id}-subcommand")
     assert result.exit_code == 0
     assert not result.stderr
     group = re.fullmatch(
@@ -68,8 +69,9 @@ def test_integrated_time_option(invoke, subcommand_id, time_min):
 
 
 @pytest.mark.parametrize("subcommand_id", ("fast", "slow"))
-def test_integrated_notime_option(invoke, subcommand_id):
-    result = invoke(integrated_timer, "--no-time", f"{subcommand_id}-subcommand")
+@pytest.mark.asyncio
+async def test_integrated_notime_option(invoke, subcommand_id):
+    result = await invoke(integrated_timer, "--no-time", f"{subcommand_id}-subcommand")
     assert result.exit_code == 0
     assert not result.stderr
     assert result.stdout == f"Start of CLI\nEnd of {subcommand_id} subcommand\n"
@@ -81,13 +83,14 @@ def test_integrated_notime_option(invoke, subcommand_id):
     command_decorators(no_groups=True, no_extra=True),
 )
 @pytest.mark.parametrize("option_decorator", (timer_option, timer_option()))
-def test_standalone_timer_option(invoke, cmd_decorator, option_decorator):
+@pytest.mark.asyncio
+async def test_standalone_timer_option(invoke, cmd_decorator, option_decorator):
     @cmd_decorator
     @option_decorator
     def standalone_timer():
         echo("It works!")
 
-    result = invoke(standalone_timer, "--help")
+    result = await invoke(standalone_timer, "--help")
     assert result.exit_code == 0
     assert not result.stderr
     assert result.stdout == dedent(
@@ -100,7 +103,7 @@ def test_standalone_timer_option(invoke, cmd_decorator, option_decorator):
         """,
     )
 
-    result = invoke(standalone_timer, "--time")
+    result = await invoke(standalone_timer, "--time")
     assert result.exit_code == 0
     assert not result.stderr
     assert re.fullmatch(
@@ -108,7 +111,7 @@ def test_standalone_timer_option(invoke, cmd_decorator, option_decorator):
         result.stdout,
     )
 
-    result = invoke(standalone_timer, "--no-time")
+    result = await invoke(standalone_timer, "--no-time")
     assert result.exit_code == 0
     assert not result.stderr
     assert result.stdout == "It works!\n"

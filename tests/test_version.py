@@ -27,7 +27,7 @@ from __future__ import annotations
 
 import re
 
-import click
+import asyncclick as click
 import pytest
 from boltons.strutils import strip_ansi
 
@@ -53,13 +53,14 @@ from .conftest import skip_windows_colors
 @pytest.mark.parametrize(
     "option_decorator", (extra_version_option, extra_version_option())
 )
-def test_standalone_version_option(invoke, cmd_decorator, option_decorator):
+@pytest.mark.asyncio
+async def test_standalone_version_option(invoke, cmd_decorator, option_decorator):
     @cmd_decorator
     @option_decorator
     def standalone_option():
         echo("It works!")
 
-    result = invoke(standalone_option, "--version", color=True)
+    result = await invoke(standalone_option, "--version", color=True)
     assert result.exit_code == 0
     assert not result.stderr
     assert result.output == (
@@ -72,14 +73,15 @@ def test_standalone_version_option(invoke, cmd_decorator, option_decorator):
 @pytest.mark.parametrize(
     "option_decorator", (extra_version_option, extra_version_option())
 )
-def test_debug_output(invoke, cmd_decorator, option_decorator):
+@pytest.mark.asyncio
+async def test_debug_output(invoke, cmd_decorator, option_decorator):
     @cmd_decorator
     @verbosity_option
     @option_decorator
     def debug_output():
         echo("It works!")
 
-    result = invoke(debug_output, "--verbosity", "DEBUG", "--version", color=True)
+    result = await invoke(debug_output, "--verbosity", "DEBUG", "--version", color=True)
     assert result.exit_code == 0
 
     assert re.fullmatch(
@@ -95,14 +97,15 @@ def test_debug_output(invoke, cmd_decorator, option_decorator):
 
 
 @skip_windows_colors
-def test_set_version(invoke):
+@pytest.mark.asyncio
+async def test_set_version(invoke):
     @click.group
     @extra_version_option(version="1.2.3.4")
     def color_cli2():
         echo("It works!")
 
     # Test default coloring.
-    result = invoke(color_cli2, "--version", color=True)
+    result = await invoke(color_cli2, "--version", color=True)
     assert result.exit_code == 0
     assert not result.stderr
     assert result.stdout == (
@@ -145,20 +148,22 @@ def test_set_version(invoke):
         ),
     ),
 )
-def test_custom_message(invoke, cmd_decorator, message, regex_stdout):
+@pytest.mark.asyncio
+async def test_custom_message(invoke, cmd_decorator, message, regex_stdout):
     @cmd_decorator
     @extra_version_option(message=message)
     def color_cli3():
         echo("It works!")
 
-    result = invoke(color_cli3, "--version", color=True)
+    result = await invoke(color_cli3, "--version", color=True)
     assert result.exit_code == 0
     assert not result.stderr
     assert re.fullmatch(regex_stdout, result.output)
 
 
 @pytest.mark.parametrize("cmd_decorator", command_decorators(no_groups=True))
-def test_style_reset(invoke, cmd_decorator):
+@pytest.mark.asyncio
+async def test_style_reset(invoke, cmd_decorator):
     @cmd_decorator
     @extra_version_option(
         message_style=None,
@@ -168,7 +173,7 @@ def test_style_reset(invoke, cmd_decorator):
     def color_reset():
         pass
 
-    result = invoke(color_reset, "--version", color=True)
+    result = await invoke(color_reset, "--version", color=True)
     assert result.exit_code == 0
     assert not result.stderr
     assert result.output == strip_ansi(result.output)
@@ -176,7 +181,8 @@ def test_style_reset(invoke, cmd_decorator):
 
 @skip_windows_colors
 @pytest.mark.parametrize("cmd_decorator", command_decorators(no_groups=True))
-def test_custom_message_style(invoke, cmd_decorator):
+@pytest.mark.asyncio
+async def test_custom_message_style(invoke, cmd_decorator):
     @cmd_decorator
     @extra_version_option(
         message="{prog_name} v{version} - {package_name} (latest)",
@@ -188,7 +194,7 @@ def test_custom_message_style(invoke, cmd_decorator):
     def custom_style():
         pass
 
-    result = invoke(custom_style, "--version", color=True)
+    result = await invoke(custom_style, "--version", color=True)
     assert result.exit_code == 0
     assert not result.stderr
     assert result.output == (
@@ -199,7 +205,8 @@ def test_custom_message_style(invoke, cmd_decorator):
 
 
 @pytest.mark.parametrize("cmd_decorator", command_decorators(no_groups=True))
-def test_context_meta(invoke, cmd_decorator):
+@pytest.mark.asyncio
+async def test_context_meta(invoke, cmd_decorator):
     @cmd_decorator
     @extra_version_option
     @pass_context
@@ -208,7 +215,7 @@ def test_context_meta(invoke, cmd_decorator):
             value = ctx.meta[f"click_extra.{field}"]
             echo(f"{field} = {value}")
 
-    result = invoke(version_metadata, color=True)
+    result = await invoke(version_metadata, color=True)
     assert result.exit_code == 0
     assert not result.stderr
     assert re.fullmatch(
@@ -233,12 +240,13 @@ def test_context_meta(invoke, cmd_decorator):
     "params",
     (None, "--help", "blah", ("--config", "random.toml")),
 )
-def test_integrated_version_option_precedence(invoke, params):
+@pytest.mark.asyncio
+async def test_integrated_version_option_precedence(invoke, params):
     @extra_group(version="1.2.3.4")
     def color_cli4():
         echo("It works!")
 
-    result = invoke(color_cli4, "--version", params, color=True)
+    result = await invoke(color_cli4, "--version", params, color=True)
     assert result.exit_code == 0
     assert not result.stderr
     assert result.stdout == (
@@ -247,7 +255,8 @@ def test_integrated_version_option_precedence(invoke, params):
 
 
 @skip_windows_colors
-def test_color_option_precedence(invoke):
+@pytest.mark.asyncio
+async def test_color_option_precedence(invoke):
     """--no-color has an effect on --version, if placed in the right order.
 
     Eager parameters are evaluated in the order as they were provided on the command
@@ -267,12 +276,12 @@ def test_color_option_precedence(invoke):
     def color_cli6():
         echo(Style(fg="yellow")("It works!"))
 
-    result = invoke(color_cli6, "--no-color", "--version", "command1", color=True)
+    result = await invoke(color_cli6, "--no-color", "--version", "command1", color=True)
     assert result.exit_code == 0
     assert not result.stderr
     assert result.stdout == "color-cli6, version 2.1.9\n"
 
-    result = invoke(color_cli6, "--version", "--no-color", "command1", color=True)
+    result = await invoke(color_cli6, "--version", "--no-color", "command1", color=True)
     assert result.exit_code == 0
     assert not result.stderr
     assert result.stdout == (

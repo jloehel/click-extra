@@ -21,7 +21,7 @@ import logging
 import os
 from pathlib import Path
 
-import click
+import asyncclick as click
 import pytest
 from extra_platforms import is_windows
 
@@ -54,7 +54,8 @@ def test_env_copy():
     assert env_var not in os.environ
 
 
-def test_runner_output():
+@pytest.mark.asyncio
+async def test_runner_output():
     @command
     def cli_output():
         echo("1 - stdout")
@@ -63,14 +64,14 @@ def test_runner_output():
         echo("4 - stderr", err=True)
 
     runner = ExtraCliRunner(mix_stderr=False)
-    result = runner.invoke(cli_output)
+    result = await runner.invoke(cli_output)
 
     assert result.output == "1 - stdout\n3 - stdout\n"
     assert result.stdout == result.output
     assert result.stderr == "2 - stderr\n4 - stderr\n"
 
     runner_mix = ExtraCliRunner(mix_stderr=True)
-    result_mix = runner_mix.invoke(cli_output)
+    result_mix = await runner_mix.invoke(cli_output)
 
     assert result_mix.output == "1 - stdout\n2 - stderr\n3 - stdout\n4 - stderr\n"
     assert result_mix.stdout == "1 - stdout\n3 - stdout\n"
@@ -78,13 +79,14 @@ def test_runner_output():
 
 
 @pytest.mark.parametrize("mix_stderr", (True, False))
-def test_runner_empty_stderr(mix_stderr):
+@pytest.mark.asyncio
+async def test_runner_empty_stderr(mix_stderr):
     @command
     def cli_empty_stderr():
         echo("stdout")
 
     runner = ExtraCliRunner(mix_stderr=mix_stderr)
-    result = runner.invoke(cli_empty_stderr)
+    result = await runner.invoke(cli_empty_stderr)
 
     assert result.output == "stdout\n"
     assert result.stdout == result.output
@@ -163,32 +165,36 @@ def check_forced_uncolored_rendering(result):
     assert result.stderr == "warning: Is the logger colored?\n"
 
 
-def test_invoke_optional_color(invoke):
-    result = invoke(run_cli1, color=None)
+@pytest.mark.asyncio
+async def test_invoke_optional_color(invoke):
+    result = await invoke(run_cli1, color=None)
     check_default_uncolored_rendering(result)
     assert result.stdout.endswith(
         "Context.color = None\nclick.utils.should_strip_ansi = True\n",
     )
 
 
-def test_invoke_default_color(invoke):
-    result = invoke(run_cli1)
+@pytest.mark.asyncio
+async def test_invoke_default_color(invoke):
+    result = await invoke(run_cli1)
     check_default_uncolored_rendering(result)
     assert result.stdout.endswith(
         "Context.color = None\nclick.utils.should_strip_ansi = True\n",
     )
 
 
-def test_invoke_forced_color_stripping(invoke):
-    result = invoke(run_cli1, color=False)
+@pytest.mark.asyncio
+async def test_invoke_forced_color_stripping(invoke):
+    result = await invoke(run_cli1, color=False)
     check_forced_uncolored_rendering(result)
     assert result.stdout.endswith(
         "Context.color = None\nclick.utils.should_strip_ansi = True\n",
     )
 
 
-def test_invoke_color_keep(invoke):
-    result = invoke(run_cli1, color=True)
+@pytest.mark.asyncio
+async def test_invoke_color_keep(invoke):
+    result = await invoke(run_cli1, color=True)
     if is_windows():
         # XXX On Windows Click ends up deciding it is not running in an interactive
         # terminal and forces the stripping of all colors.
@@ -212,10 +218,11 @@ def test_invoke_color_keep(invoke):
     )
 
 
-def test_invoke_color_forced(invoke):
+@pytest.mark.asyncio
+async def test_invoke_color_forced(invoke):
     """Test colors are preserved while invoking, and forced to be rendered on
     Windows."""
-    result = invoke(run_cli1, color="forced")
+    result = await invoke(run_cli1, color="forced")
     check_default_colored_rendering(result)
     assert result.stdout.endswith(
         "Context.color = True\nclick.utils.should_strip_ansi = False\n",

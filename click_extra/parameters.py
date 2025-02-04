@@ -20,9 +20,11 @@ Also implements environment variable utilities.
 
 from __future__ import annotations
 
+import asyncio
 import inspect
 import logging
 import re
+import threading
 from collections.abc import Iterable, MutableMapping, Sequence
 from contextlib import nullcontext
 from functools import cached_property, reduce
@@ -37,7 +39,7 @@ from typing import (
 )
 from unittest.mock import patch
 
-import click
+import asyncclick as click
 from boltons.iterutils import unique
 from mergedeep import merge
 from tabulate import tabulate
@@ -51,6 +53,24 @@ from . import (
     echo,
     get_current_context,
 )
+
+
+# Hack to use async functions in Parameter callbacks
+# See: https://gist.github.com/gsakkis/18bc444607a590fe3f084a77aa54b4c2
+class sync_await:
+    def __enter__(self) -> "sync_await":
+        self._loop = asyncio.new_event_loop()
+        self._looper = threading.Thread(target=self._loop.run_forever, daemon=True)
+        self._looper.start()
+        return self
+
+    def __call__(self, coro: Awaitable[T], timeout: Optional[float] = None) -> T:
+        return asyncio.run_coroutine_threadsafe(coro, self._loop).result(timeout)
+
+    def __exit__(self, *exc_info: Any) -> None:
+        self._loop.call_soon_threadsafe(self._loop.stop)
+        self._looper.join()
+        self._loop.close()
 
 
 def auto_envvar(
@@ -634,7 +654,9 @@ class ShowParamsOption(ExtraOption, ParamStructure):
             # Mimics click.core.Command.parse_args() so we can produce the list of
             # parsed options values.
             parser = ctx.command.make_parser(ctx)
-            opts, _, _ = parser.parse_args(args=raw_args)
+
+            with sync_await() as await_:
+                opts, _, _ = await_(parser.parse_args(args=raw_args))
 
             # We call directly consume_value() instead of handle_parse_result() to
             # prevent an embedded call to process_value(), as the later triggers the

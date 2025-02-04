@@ -32,8 +32,8 @@ __version__ = "4.14.2"
 # XXX Star import is really badly supported by mypy for now and leads to lots of
 # "Module 'XXX' has no attribute 'YYY'". See: https://github.com/python/mypy/issues/4930
 # Overrides click helpers with cloup's.
-from click import *  # noqa: E402, F403
-from click.core import ParameterSource  # noqa: E402
+from asyncclick import *  # noqa: E402, F403
+from asyncclick.core import ParameterSource  # noqa: E402
 from cloup import *  # type: ignore[no-redef, assignment] # noqa: E402, F403
 
 from .colorize import (  # noqa: E402

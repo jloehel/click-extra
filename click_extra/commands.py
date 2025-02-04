@@ -24,7 +24,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-import click
+import asyncclick as click
 import cloup
 
 from . import Command, Group, Option
@@ -44,7 +44,7 @@ from .version import ExtraVersionOption
 if TYPE_CHECKING:
     from typing import NoReturn
 
-from click.exceptions import Exit
+from asyncclick.exceptions import Exit
 
 
 def patched_exit(self, code: int = 0) -> NoReturn:

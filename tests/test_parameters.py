@@ -21,7 +21,7 @@ from os.path import sep
 from pathlib import Path
 from textwrap import dedent
 
-import click
+import asyncclick as click
 import pytest
 from extra_platforms import is_windows
 from tabulate import tabulate
@@ -100,7 +100,8 @@ def test_normalize_envvar(env_name, normalized_env):
         ),
     ),
 )
-def test_show_auto_envvar_help(invoke, cmd_decorator, option_help):
+@pytest.mark.asyncio
+async def test_show_auto_envvar_help(invoke, cmd_decorator, option_help):
     """Check that the auto-generated envvar appears in the help screen with the extra
     variants.
 
@@ -113,7 +114,7 @@ def test_show_auto_envvar_help(invoke, cmd_decorator, option_help):
         pass
 
     # Remove colors to simplify output comparison.
-    result = invoke(envvar_help, "--help", color=False)
+    result = await invoke(envvar_help, "--help", color=False)
     assert result.exit_code == 0
     assert not result.stderr
     assert option_help in result.stdout
@@ -220,7 +221,8 @@ def envvars_test_cases():
 
 
 @pytest.mark.parametrize("cmd_decorator, envvars, expected_flag", envvars_test_cases())
-def test_auto_envvar_parsing(invoke, cmd_decorator, envvars, expected_flag):
+@pytest.mark.asyncio
+async def test_auto_envvar_parsing(invoke, cmd_decorator, envvars, expected_flag):
     """This test highlights the way Click recognize and parse envvars.
 
     It shows that the default behavior is not ideal, and covers how ``extra_command``
@@ -238,7 +240,7 @@ def test_auto_envvar_parsing(invoke, cmd_decorator, envvars, expected_flag):
         registered_envvars = (*registered_envvars, "yo_FLAG")
     assert my_cli.params[0].envvar == registered_envvars
 
-    result = invoke(my_cli, env=envvars)
+    result = await invoke(my_cli, env=envvars)
     assert result.exit_code == 0
     assert not result.stderr
     assert result.stdout == f"Flag value: {expected_flag}\n"
@@ -255,7 +257,8 @@ class Custom(ParamType):
 
 
 @pytest.mark.parametrize("option_decorator", (show_params_option, show_params_option()))
-def test_params_auto_types(invoke, option_decorator):
+@pytest.mark.asyncio
+async def test_params_auto_types(invoke, option_decorator):
     """Check parameters types and structure are properly derived from CLI."""
 
     @click.command
@@ -315,7 +318,7 @@ def test_params_auto_types(invoke, option_decorator):
         echo("Works!")
 
     # Invoke the --show-params option to trigger the introspection.
-    result = invoke(
+    result = await invoke(
         params_introspection,
         "--show-params",
         "random_file1",
@@ -394,21 +397,22 @@ def test_params_auto_types(invoke, option_decorator):
 # Skip click extra's commands, as show_params option is already part of the default.
 @pytest.mark.parametrize("cmd_decorator", command_decorators(no_extra=True))
 @pytest.mark.parametrize("option_decorator", (show_params_option, show_params_option()))
-def test_standalone_show_params_option(invoke, cmd_decorator, option_decorator):
+@pytest.mark.asyncio
+async def test_standalone_show_params_option(invoke, cmd_decorator, option_decorator):
     @cmd_decorator
     @option_decorator
     def show_params():
         echo("It works!")
 
-    result = invoke(show_params, "--show-params")
+    result = await invoke(show_params, "--show-params")
     assert result.exit_code == 0
 
     table = [
         (
             "show-params.help",
-            "click.decorators.HelpOption",
+            "asyncclick.decorators.HelpOption",
             "--help",
-            "click.types.BoolParamType",
+            "asyncclick.types.BoolParamType",
             "bool",
             "✘",
             "✘",
@@ -422,7 +426,7 @@ def test_standalone_show_params_option(invoke, cmd_decorator, option_decorator):
             "show-params.show_params",
             "click_extra.parameters.ShowParamsOption",
             "--show-params",
-            "click.types.BoolParamType",
+            "asyncclick.types.BoolParamType",
             "bool",
             "✘",
             "✘",
@@ -448,7 +452,8 @@ def test_standalone_show_params_option(invoke, cmd_decorator, option_decorator):
     )
 
 
-def test_integrated_show_params_option(invoke, create_config):
+@pytest.mark.asyncio
+async def test_integrated_show_params_option(invoke, create_config):
     @extra_command
     @option("--int-param1", type=int, default=10)
     @option("--int-param2", type=int, default=555)
@@ -479,7 +484,7 @@ def test_integrated_show_params_option(invoke, create_config):
         "--show-params",
         "--help",
     ]
-    result = invoke(show_params_cli, *raw_args, color=False)
+    result = await invoke(show_params_cli, *raw_args, color=False)
 
     assert result.exit_code == 0
     assert f"debug: click_extra.raw_args: {raw_args!r}\n" in result.stderr
@@ -489,7 +494,7 @@ def test_integrated_show_params_option(invoke, create_config):
             "show-params-cli.color",
             "click_extra.colorize.ColorOption",
             "--color, --ansi / --no-color, --no-ansi",
-            "click.types.BoolParamType",
+            "asyncclick.types.BoolParamType",
             "bool",
             "✘",
             "✘",
@@ -503,7 +508,7 @@ def test_integrated_show_params_option(invoke, create_config):
             "show-params-cli.config",
             "click_extra.config.ConfigOption",
             "-C, --config CONFIG_PATH",
-            "click.types.StringParamType",
+            "asyncclick.types.StringParamType",
             "str",
             "✘",
             "✘",
@@ -532,9 +537,9 @@ def test_integrated_show_params_option(invoke, create_config):
         ),
         (
             "show-params-cli.help",
-            "click.decorators.HelpOption",
+            "asyncclick.decorators.HelpOption",
             "-h, --help",
-            "click.types.BoolParamType",
+            "asyncclick.types.BoolParamType",
             "bool",
             "✘",
             "✘",
@@ -548,7 +553,7 @@ def test_integrated_show_params_option(invoke, create_config):
             "show-params-cli.hidden_param",
             "cloup._params.Option",
             "--hidden-param TEXT",
-            "click.types.StringParamType",
+            "asyncclick.types.StringParamType",
             "str",
             "✓",
             "✓",
@@ -562,7 +567,7 @@ def test_integrated_show_params_option(invoke, create_config):
             "show-params-cli.int_param1",
             "cloup._params.Option",
             "--int-param1 INTEGER",
-            "click.types.IntParamType",
+            "asyncclick.types.IntParamType",
             "int",
             "✘",
             "✓",
@@ -576,7 +581,7 @@ def test_integrated_show_params_option(invoke, create_config):
             "show-params-cli.int_param2",
             "cloup._params.Option",
             "--int-param2 INTEGER",
-            "click.types.IntParamType",
+            "asyncclick.types.IntParamType",
             "int",
             "✘",
             "✓",
@@ -590,7 +595,7 @@ def test_integrated_show_params_option(invoke, create_config):
             "show-params-cli.show_params",
             "click_extra.parameters.ShowParamsOption",
             "--show-params",
-            "click.types.BoolParamType",
+            "asyncclick.types.BoolParamType",
             "bool",
             "✘",
             "✘",
@@ -604,7 +609,7 @@ def test_integrated_show_params_option(invoke, create_config):
             "show-params-cli.time",
             "click_extra.timer.TimerOption",
             "--time / --no-time",
-            "click.types.BoolParamType",
+            "asyncclick.types.BoolParamType",
             "bool",
             "✘",
             "✘",
@@ -618,7 +623,7 @@ def test_integrated_show_params_option(invoke, create_config):
             "show-params-cli.verbose",
             "click_extra.logging.VerboseOption",
             "-v, --verbose",
-            "click.types.IntRange",
+            "asyncclick.types.IntRange",
             "int",
             "✘",
             "✘",
@@ -632,7 +637,7 @@ def test_integrated_show_params_option(invoke, create_config):
             "show-params-cli.verbosity",
             "click_extra.logging.VerbosityOption",
             "--verbosity LEVEL",
-            "click.types.Choice",
+            "asyncclick.types.Choice",
             "str",
             "✘",
             "✘",
@@ -646,7 +651,7 @@ def test_integrated_show_params_option(invoke, create_config):
             "show-params-cli.version",
             "click_extra.version.ExtraVersionOption",
             "--version",
-            "click.types.BoolParamType",
+            "asyncclick.types.BoolParamType",
             "bool",
             "✘",
             "✘",
@@ -666,7 +671,8 @@ def test_integrated_show_params_option(invoke, create_config):
     assert result.stdout == f"{output}\n"
 
 
-def test_recurse_subcommands(invoke):
+@pytest.mark.asyncio
+async def test_recurse_subcommands(invoke):
     @extra_group(params=[ShowParamsOption()])
     def show_params_cli_main():
         echo("main cmd")
@@ -680,14 +686,14 @@ def test_recurse_subcommands(invoke):
     def show_params_sub_sub_cmd(int_param):
         echo(f"subsubcommand int_param is {int_param!r}")
 
-    result = invoke(show_params_cli_main, "--show-params", color=False)
+    result = await invoke(show_params_cli_main, "--show-params", color=False)
 
     table = [
         (
             "show-params-cli-main.help",
-            "click.decorators.HelpOption",
+            "asyncclick.decorators.HelpOption",
             "-h, --help",
-            "click.types.BoolParamType",
+            "asyncclick.types.BoolParamType",
             "bool",
             "✘",
             "✘",
@@ -701,7 +707,7 @@ def test_recurse_subcommands(invoke):
             "show-params-cli-main.show_params",
             "click_extra.parameters.ShowParamsOption",
             "--show-params",
-            "click.types.BoolParamType",
+            "asyncclick.types.BoolParamType",
             "bool",
             "✘",
             "✘",
@@ -713,9 +719,9 @@ def test_recurse_subcommands(invoke):
         ),
         (
             "show-params-cli-main.show-params-sub-cmd.help",
-            "click.decorators.HelpOption",
+            "asyncclick.decorators.HelpOption",
             "-h, --help",
-            "click.types.BoolParamType",
+            "asyncclick.types.BoolParamType",
             "bool",
             "✘",
             "✘",
@@ -727,9 +733,9 @@ def test_recurse_subcommands(invoke):
         ),
         (
             "show-params-cli-main.show-params-sub-cmd.show-params-sub-sub-cmd.help",
-            "click.decorators.HelpOption",
+            "asyncclick.decorators.HelpOption",
             "-h, --help",
-            "click.types.BoolParamType",
+            "asyncclick.types.BoolParamType",
             "bool",
             "✘",
             "✘",
@@ -743,7 +749,7 @@ def test_recurse_subcommands(invoke):
             "show-params-cli-main.show-params-sub-cmd.show-params-sub-sub-cmd.int_param",
             "cloup._params.Option",
             "--int-param INTEGER",
-            "click.types.IntParamType",
+            "asyncclick.types.IntParamType",
             "int",
             "✘",
             "✓",
